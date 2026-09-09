@@ -106,3 +106,10 @@ def test_serialized_report_recursively_conforms_to_published_schema(tmp_path: Pa
     malformed["reference"]["staves"][0]["line_y_sp"].append(5.0)
     with pytest.raises(AssertionError, match="too many items"):
         assert_matches_schema(malformed, schema, schema)
+
+
+def test_published_and_installed_schema_copies_are_identical() -> None:
+    published = Path(__file__).parents[1] / "docs" / "report.schema.json"
+    installed = Path(__import__("native_lens").__file__).with_name("report.schema.json")
+
+    assert installed.read_bytes() == published.read_bytes()

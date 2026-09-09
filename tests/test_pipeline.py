@@ -362,4 +362,7 @@ def test_executable_benchmark_smoke() -> None:
     )
     metrics = json.loads(result.stdout)
     assert metrics["objects"] > 0
+    assert metrics["candidate_edges"] >= metrics["objects"]
+    assert metrics["page_pixels"] == 300_000
+    assert metrics["min_seconds"] <= metrics["mean_seconds"] <= metrics["max_seconds"]
     assert metrics["max_seconds"] > 0

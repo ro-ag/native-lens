@@ -127,6 +127,24 @@ matches are gated by centroid distance and size ratio; sorted cost edges are
 consumed greedily with stable ID tie-breaks. The report includes deltas, costs,
 and both unmatched sets so ambiguity remains diagnosable.
 
+The raster stages make a constant number of page passes. Component extraction
+examines each component's bounding slice rather than rescanning the full page
+for every label. Matching uses a staff-space radius index, then sorts only the
+reported local candidate edges. The resulting work is proportional to page
+pixels, the sum of component bounding-slice areas, and local match edges; the
+benchmark reports all three observable proxies (pixels, objects, and edges).
+
+### Milestone 1 performance baseline
+
+Run `uv run python benchmarks/benchmark_pipeline.py` for the full synthetic
+baseline. On an Apple-silicon macOS host with Python 3.13, three comparisons of
+a 1600 x 2200 page containing 1,782 extracted components and 4,774 local
+candidate edges completed in 0.414-0.422 seconds each. A half-width,
+half-height 800 x 1100 page containing 780 components and 2,100 edges completed
+in 0.130-0.153 seconds. Timings are diagnostics, not a portable pass/fail
+threshold; benchmark JSON reports the work counts so future changes can be
+compared at equivalent work.
+
 ### Secondary raster metrics
 
 Mean absolute luma error and foreground disagreement are calculated on the
