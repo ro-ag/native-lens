@@ -24,6 +24,7 @@ class RasterAnalysis:
     gray: np.ndarray
     ink: np.ndarray
     staff_rows_px: tuple[tuple[float, ...], ...]
+    staff_bounds_px: tuple[tuple[int, int], ...]
     anchor_px: Point
 
 
@@ -119,6 +120,27 @@ def detect_staff_rows(ink: np.ndarray, config: AnalysisConfig) -> tuple[tuple[fl
     return tuple(groups)
 
 
+def detect_staff_extents(
+    ink: np.ndarray, rows: tuple[tuple[float, ...], ...], spacing: float
+) -> tuple[tuple[int, int], ...]:
+    """Find the horizontal span supported by at least three staff lines."""
+    extents: list[tuple[int, int]] = []
+    gap_fill = np.ones(max(1, round(spacing)), dtype=bool)
+    for staff in rows:
+        support = np.zeros(ink.shape[1], dtype=np.uint8)
+        for value in staff:
+            row = round(value)
+            band = ink[max(0, row - 1) : min(ink.shape[0], row + 2)]
+            support += band.any(axis=0)
+        continuous = ndimage.binary_closing(support >= 3, structure=gap_fill)
+        candidates = _runs(np.flatnonzero(continuous))
+        if not candidates:
+            raise AnalysisError("staff lines have no common horizontal extent")
+        longest = max(candidates, key=lambda run: (len(run), -int(run[0])))
+        extents.append((int(longest[0]), int(longest[-1]) + 1))
+    return tuple(extents)
+
+
 def _remove_staff(
     ink: np.ndarray, rows: tuple[tuple[float, ...], ...], spacing: float, config: AnalysisConfig
 ) -> np.ndarray:
@@ -137,18 +159,26 @@ def analyze_png(path: Path, role: str, config: AnalysisConfig) -> RasterAnalysis
     source_threshold = otsu_threshold(source_gray)
     source_ink = source_gray <= source_threshold
     skew = estimate_skew(source_ink, config)
-    gray = ndimage.rotate(source_gray, -skew, reshape=True, order=1, mode="constant", cval=255)
+    # The projection transform uses image coordinates, so `skew` is already the
+    # correction angle expected by scipy's counter-clockwise rotation.
+    gray = ndimage.rotate(source_gray, skew, reshape=True, order=1, mode="constant", cval=255)
     gray = np.clip(np.rint(gray), 0, 255).astype(np.uint8)
     threshold = otsu_threshold(gray)
     ink = gray <= threshold
     rows = detect_staff_rows(ink, config)
     spaces = [gap for staff in rows for gap in np.diff(staff)]
     spacing = float(np.median(spaces))
-    anchor = Point(0.0, rows[0][0])
+    extents = detect_staff_extents(ink, rows, spacing)
+    anchor = Point(float(extents[0][0]), rows[0][0])
 
     staves: list[StaffRegion] = []
-    for index, staff in enumerate(rows, 1):
-        bounds = Rect(0.0, (staff[0] - anchor.y) / spacing, ink.shape[1] / spacing, 4.0)
+    for index, (staff, extent) in enumerate(zip(rows, extents, strict=True), 1):
+        bounds = Rect(
+            (extent[0] - anchor.x) / spacing,
+            (staff[0] - anchor.y) / spacing,
+            (extent[1] - extent[0]) / spacing,
+            4.0,
+        )
         staves.append(
             StaffRegion(
                 f"staff-{index}",
@@ -173,8 +203,12 @@ def analyze_png(path: Path, role: str, config: AnalysisConfig) -> RasterAnalysis
     without_staff = _remove_staff(ink, rows, spacing, config)
     labels, count = ndimage.label(without_staff, structure=np.ones((3, 3), dtype=np.uint8))
     objects: list[ExtractedObject] = []
-    for label_id in range(1, count + 1):
-        y, x = np.nonzero(labels == label_id)
+    for label_id, slices in enumerate(ndimage.find_objects(labels, max_label=count), 1):
+        if slices is None:
+            continue
+        local_y, local_x = np.nonzero(labels[slices] == label_id)
+        y = local_y + slices[0].start
+        x = local_x + slices[1].start
         area = len(x) / spacing**2
         if area < config.min_component_area_sp2:
             continue
@@ -190,7 +224,10 @@ def analyze_png(path: Path, role: str, config: AnalysisConfig) -> RasterAnalysis
                 "unclassified_component",
                 None,
                 bounds,
-                Point(float(x.mean() / spacing), float((y.mean() - anchor.y) / spacing)),
+                Point(
+                    float((x.mean() - anchor.x) / spacing),
+                    float((y.mean() - anchor.y) / spacing),
+                ),
                 float(area),
             )
         )
@@ -216,14 +253,16 @@ def analyze_png(path: Path, role: str, config: AnalysisConfig) -> RasterAnalysis
         tuple(systems),
         tuple(objects),
     )
-    return RasterAnalysis(page, gray, ink, rows, anchor)
+    return RasterAnalysis(page, gray, ink, rows, extents, anchor)
 
 
 def _system(index: int, staves: list[StaffRegion]) -> SystemRegion:
+    left = min(staff.bounds_sp.x for staff in staves)
     top = staves[0].bounds_sp.y
+    right = max(staff.bounds_sp.right for staff in staves)
     bottom = staves[-1].bounds_sp.bottom
     return SystemRegion(
         f"system-{index}",
-        Rect(0.0, top, max(item.bounds_sp.width for item in staves), bottom - top),
+        Rect(left, top, right - left, bottom - top),
         tuple(item.id for item in staves),
     )

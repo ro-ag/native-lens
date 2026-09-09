@@ -23,6 +23,9 @@ The output directory contains:
 - `overlay.png` — reference ink in magenta and candidate ink in cyan;
 - `diff.png` — absolute raster difference, retained as a secondary diagnostic.
 
+The report contract is published as
+[`docs/report.schema.json`](docs/report.schema.json).
+
 The command exits with an error when either page has no detectable five-line
 staff. A missing structural coordinate system must not be silently replaced by
 pixel similarity.
@@ -65,10 +68,15 @@ uv run pytest --cov
 uv build
 ```
 
+Run the synthetic end-to-end performance baseline with:
+
+```console
+uv run python benchmarks/benchmark_pipeline.py
+```
+
 Synthetic score pages are generated in tests, making fixtures reproducible and
 keeping their geometry explicit. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
 MIT. See [LICENSE](LICENSE).
-
