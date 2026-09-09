@@ -73,26 +73,36 @@ def _matches(
 
 def _aligned(
     reference: RasterAnalysis, candidate: RasterAnalysis
-) -> tuple[np.ndarray, np.ndarray, float]:
+) -> tuple[np.ndarray, np.ndarray, dict[str, Any]]:
     scale = reference.page.staff_space_px / candidate.page.staff_space_px
     candidate_image = Image.fromarray(candidate.gray).resize(
         (round(candidate.gray.shape[1] * scale), round(candidate.gray.shape[0] * scale)),
         Image.Resampling.BICUBIC,
     )
     candidate_gray = np.asarray(candidate_image)
-    reference_anchor_y = reference.anchor_px.y
-    candidate_anchor_y = candidate.anchor_px.y * scale
-    shift_y = round(reference_anchor_y - candidate_anchor_y)
+    shift_x = round(reference.anchor_px.x - candidate.anchor_px.x * scale)
+    shift_y = round(reference.anchor_px.y - candidate.anchor_px.y * scale)
+    left = min(0, shift_x)
     top = min(0, shift_y)
+    right = max(reference.gray.shape[1], shift_x + candidate_gray.shape[1])
     bottom = max(reference.gray.shape[0], shift_y + candidate_gray.shape[0])
-    width = max(reference.gray.shape[1], candidate_gray.shape[1])
-    left_canvas = np.full((bottom - top, width), 255, dtype=np.uint8)
+    left_canvas = np.full((bottom - top, right - left), 255, dtype=np.uint8)
     right_canvas = left_canvas.copy()
-    left_canvas[-top : -top + reference.gray.shape[0], : reference.gray.shape[1]] = reference.gray
+    left_canvas[-top : -top + reference.gray.shape[0], -left : -left + reference.gray.shape[1]] = (
+        reference.gray
+    )
     right_canvas[
-        shift_y - top : shift_y - top + candidate_gray.shape[0], : candidate_gray.shape[1]
+        shift_y - top : shift_y - top + candidate_gray.shape[0],
+        shift_x - left : shift_x - left + candidate_gray.shape[1],
     ] = candidate_gray
-    return left_canvas, right_canvas, scale
+    alignment = {
+        "candidate_scale": round(scale, 6),
+        "reference_to_canvas_px": [1.0, 0.0, 0.0, 1.0, -left, -top],
+        "candidate_to_canvas_px": [scale, 0.0, 0.0, scale, shift_x - left, shift_y - top],
+        "canvas_width_px": right - left,
+        "canvas_height_px": bottom - top,
+    }
+    return left_canvas, right_canvas, alignment
 
 
 def _save_artifacts(reference: np.ndarray, candidate: np.ndarray, output: Path) -> dict[str, str]:
@@ -124,7 +134,7 @@ def compare_pngs(
     config = config or AnalysisConfig()
     reference = analyze_png(reference_path, "reference", config)
     candidate = analyze_png(candidate_path, "candidate", config)
-    aligned_reference, aligned_candidate, scale = _aligned(reference, candidate)
+    aligned_reference, aligned_candidate, alignment = _aligned(reference, candidate)
     output.mkdir(parents=True, exist_ok=True)
     artifacts = _save_artifacts(aligned_reference, aligned_candidate, output)
     components = _matches(reference, candidate, config)
@@ -148,11 +158,7 @@ def compare_pngs(
         "config": asdict(config),
         "reference": report_dict(reference.page),
         "candidate": report_dict(candidate.page),
-        "alignment": {
-            "candidate_scale": round(scale, 6),
-            "canvas_width_px": aligned_reference.shape[1],
-            "canvas_height_px": aligned_reference.shape[0],
-        },
+        "alignment": alignment,
         "structural": structural,
         "components": components,
         "raster_secondary": {
