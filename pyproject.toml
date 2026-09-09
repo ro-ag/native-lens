@@ -1,0 +1,62 @@
+[project]
+name = "native-lens"
+version = "0.1.0"
+description = "Deterministic notation-aware analysis of rendered music"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MIT"
+authors = [{ name = "native-lens contributors" }]
+keywords = ["music-notation", "engraving", "computer-vision", "regression-testing"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Multimedia :: Graphics",
+    "Topic :: Software Development :: Testing",
+]
+license-files = ["LICENSE"]
+dependencies = [
+    "numpy>=2.0",
+    "pillow>=11.0",
+    "scipy>=1.14",
+]
+
+[project.urls]
+Homepage = "https://github.com/ro-ag/native-lens"
+Repository = "https://github.com/ro-ag/native-lens"
+Issues = "https://github.com/ro-ag/native-lens/issues"
+
+[project.scripts]
+engravecmp = "native_lens.cli:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pytest-cov>=6.0",
+    "ruff>=0.12",
+]
+
+[build-system]
+requires = ["uv_build>=0.12.7,<0.13.0"]
+build-backend = "uv_build"
+
+[tool.pytest.ini_options]
+addopts = "--strict-config --strict-markers"
+testpaths = ["tests"]
+
+[tool.coverage.run]
+branch = true
+source = ["native_lens"]
+
+[tool.coverage.report]
+fail_under = 85
+show_missing = true
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "B", "SIM", "RUF"]
