@@ -10,10 +10,10 @@ is complete only when it has executable evidence.
 | Estimate staff-space size | Structural report assertions | Complete |
 | Detect and remove small global skew | Rotated synthetic regression | Open |
 | Normalize scale without local warping | Scaled synthetic regression | Open |
-| Detect staff and system regions including x-extents | Region assertions | Open |
-| Align on both axes using a union canvas | Translation regression and transform assertions | Open |
+| Detect staff and system regions including x-extents | Region assertions | Complete |
+| Align on both axes using a union canvas | Translation regression and transform assertions | Complete |
 | Calculate secondary raster metrics | End-to-end report test | Complete |
-| Extract components without full-page work per component | Performance-focused test and benchmark | Open |
+| Extract components without full-page work per component | Bounding-slice extraction and spatial match index | Complete |
 | Compare normalized component geometry | Offset component regression | Complete |
 | Produce versioned JSON conforming to a published schema | Schema contract test | Open |
 | Produce four diagnostic PNG artifacts | End-to-end artifact test | Complete |
@@ -32,4 +32,3 @@ is complete only when it has executable evidence.
 5. The CLI's analysis failure is tested only through the library; partial-output
    and parser exit behavior need direct coverage.
 6. No executable benchmark exists despite the earlier completion record.
-

@@ -84,6 +84,46 @@ def test_cli_prints_report_path(tmp_path: Path, capsys: pytest.CaptureFixture[st
     assert str(output / "report.json") in capsys.readouterr().out
 
 
+def test_failed_analysis_leaves_no_partial_report(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    reference = tmp_path / "reference.png"
+    candidate = tmp_path / "blank.png"
+    output = tmp_path / "report"
+    score_page(reference)
+    Image.new("L", (100, 100), 255).save(candidate)
+
+    with pytest.raises(SystemExit) as exit_info:
+        main(
+            [
+                "compare",
+                "--reference",
+                str(reference),
+                "--candidate",
+                str(candidate),
+                "--output",
+                str(output),
+            ]
+        )
+
+    assert exit_info.value.code == 2
+    assert "no five-line staff detected" in capsys.readouterr().err
+    assert not output.exists()
+
+
+def test_report_satisfies_published_top_level_contract(tmp_path: Path) -> None:
+    reference = tmp_path / "reference.png"
+    score_page(reference)
+    report = compare_pngs(reference, reference, tmp_path / "report")
+    schema_path = Path(__file__).parents[1] / "docs" / "report.schema.json"
+    schema = json.loads(schema_path.read_text())
+
+    assert schema["properties"]["schema_version"]["const"] == report["schema_version"]
+    assert set(schema["required"]) == set(report)
+    assert len(report["alignment"]["reference_to_canvas_px"]) == 6
+    assert len(report["alignment"]["candidate_to_canvas_px"]) == 6
+
+
 def test_horizontal_margin_is_removed_by_structural_registration(tmp_path: Path) -> None:
     reference = tmp_path / "reference.png"
     candidate = tmp_path / "candidate.png"
