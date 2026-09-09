@@ -113,6 +113,10 @@ Deskew both pages independently. Uniformly scale the candidate so its median
 staff space equals the reference, then translate its first staff-line origin to
 the reference origin. Place both images on a union canvas, preserving all
 content. This deliberately avoids elastic or measure-local registration.
+`reference_to_canvas_px` and `candidate_to_canvas_px` are six-value affine
+transforms in `[a, b, c, d, e, f]` order. They map original source pixel centers
+directly to aligned artifact coordinates by composing the center-based deskew
+rotation and reshape offset, candidate scale, and union-canvas translation.
 
 ### Components and comparison
 
@@ -159,4 +163,3 @@ lockfile, command, and build activity runs through `uv`.
    consensus/outlier analysis.
 5. Add broad/narrow collision phases, clearance policies, curve metrics, and
    failure-crop/HTML reporting.
-

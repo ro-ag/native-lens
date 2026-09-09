@@ -12,10 +12,17 @@ from native_lens.pipeline import compare_pngs
 from native_lens.raster.analysis import AnalysisError, analyze_png, otsu_threshold
 
 
-def score_page(path: Path, *, note_offset: int = 0, left: int = 25) -> None:
-    image = Image.new("L", (420, 180), 255)
+def score_page(
+    path: Path,
+    *,
+    note_offset: int = 0,
+    left: int = 25,
+    top_offset: int = 0,
+    size: tuple[int, int] = (420, 180),
+) -> None:
+    image = Image.new("L", size, 255)
     draw = ImageDraw.Draw(image)
-    for staff_top in (35, 110):
+    for staff_top in (35 + top_offset, 110 + top_offset):
         for line in range(5):
             y = staff_top + line * 8
             draw.line((left, y, left + 370, y), fill=0, width=1)
@@ -140,6 +147,24 @@ def test_horizontal_margin_is_removed_by_structural_registration(tmp_path: Path)
     assert report["raster_secondary"]["foreground_disagreement_ratio"] < 0.01
 
 
+def test_two_axis_registration_preserves_union_of_different_page_sizes(tmp_path: Path) -> None:
+    reference = tmp_path / "reference.png"
+    candidate = tmp_path / "candidate.png"
+    output = tmp_path / "report"
+    score_page(reference)
+    score_page(candidate, left=45, top_offset=20, size=(460, 220))
+
+    report = compare_pngs(reference, candidate, output)
+
+    assert report["alignment"]["canvas_width_px"] == 460
+    assert report["alignment"]["canvas_height_px"] == 220
+    assert report["alignment"]["reference_to_canvas_px"][4:] == [20.0, 20.0]
+    assert report["alignment"]["candidate_to_canvas_px"][4:] == [0.0, 0.0]
+    assert Image.open(output / "aligned-reference.png").size == (460, 220)
+    assert Image.open(output / "aligned-candidate.png").size == (460, 220)
+    assert report["raster_secondary"]["foreground_disagreement_ratio"] == 0
+
+
 def test_scale_is_normalized_from_staff_space(tmp_path: Path) -> None:
     reference = tmp_path / "reference.png"
     candidate = tmp_path / "candidate.png"
@@ -166,6 +191,9 @@ def test_small_skew_is_detected_and_removed(tmp_path: Path) -> None:
 
     assert abs(report["candidate"]["estimated_skew_degrees"]) == pytest.approx(0.8, abs=0.11)
     assert report["structural"]["staff_count_matches"] is True
+    candidate_transform = report["alignment"]["candidate_to_canvas_px"]
+    assert abs(candidate_transform[1]) > 0.01
+    assert abs(candidate_transform[2]) > 0.01
 
 
 def test_executable_benchmark_smoke() -> None:

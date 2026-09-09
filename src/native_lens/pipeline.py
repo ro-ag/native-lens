@@ -13,7 +13,13 @@ from PIL import Image
 from scipy.spatial import cKDTree
 
 from native_lens.config import AnalysisConfig
-from native_lens.model import REPORT_SCHEMA_VERSION, ObjectMatch, Point, report_dict
+from native_lens.model import (
+    REPORT_SCHEMA_VERSION,
+    AffineTransform,
+    ObjectMatch,
+    Point,
+    report_dict,
+)
 from native_lens.raster.analysis import RasterAnalysis, analyze_png
 
 
@@ -111,14 +117,25 @@ def _aligned(
         shift_y - top : shift_y - top + candidate_gray.shape[0],
         shift_x - left : shift_x - left + candidate_gray.shape[1],
     ] = candidate_gray
+    reference_to_canvas = reference.source_to_deskew_px.then(AffineTransform(e=-left, f=-top))
+    candidate_to_canvas = candidate.source_to_deskew_px.then(
+        AffineTransform(a=scale, d=scale)
+    ).then(AffineTransform(e=shift_x - left, f=shift_y - top))
     alignment = {
         "candidate_scale": round(scale, 6),
-        "reference_to_canvas_px": [1.0, 0.0, 0.0, 1.0, -left, -top],
-        "candidate_to_canvas_px": [scale, 0.0, 0.0, scale, shift_x - left, shift_y - top],
+        "reference_to_canvas_px": _affine_values(reference_to_canvas),
+        "candidate_to_canvas_px": _affine_values(candidate_to_canvas),
         "canvas_width_px": right - left,
         "canvas_height_px": bottom - top,
     }
     return left_canvas, right_canvas, alignment
+
+
+def _affine_values(transform: AffineTransform) -> list[float]:
+    return [
+        round(value, 6)
+        for value in (transform.a, transform.b, transform.c, transform.d, transform.e, transform.f)
+    ]
 
 
 def _save_artifacts(reference: np.ndarray, candidate: np.ndarray, output: Path) -> dict[str, str]:

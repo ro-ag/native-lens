@@ -7,6 +7,9 @@ def test_geometry_primitives() -> None:
     assert first.distance(second) == 5
     assert Rect(1, 2, 4, 6).center == Point(3, 5)
     assert AffineTransform(a=2, d=2, e=1).apply(Point(2, 3)) == Point(5, 6)
+    first = AffineTransform(a=2, d=2, e=1, f=-1)
+    following = AffineTransform(e=3, f=4)
+    assert first.then(following).apply(Point(2, 3)) == following.apply(first.apply(Point(2, 3)))
 
 
 def test_bezier_preserves_endpoints() -> None:
