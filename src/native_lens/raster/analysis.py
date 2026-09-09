@@ -31,10 +31,17 @@ class RasterAnalysis:
 
 
 def load_gray(path: Path) -> np.ndarray:
-    with Image.open(path) as image:
-        if image.format != "PNG":
-            raise AnalysisError(f"expected PNG input: {path}")
-        return np.asarray(image.convert("L"), dtype=np.uint8)
+    if not path.is_file():
+        raise AnalysisError(f"input is not a file: {path}")
+    try:
+        with Image.open(path) as image:
+            if image.format != "PNG":
+                raise AnalysisError(f"expected PNG input: {path}")
+            return np.asarray(image.convert("L"), dtype=np.uint8)
+    except AnalysisError:
+        raise
+    except (OSError, ValueError) as error:
+        raise AnalysisError(f"cannot decode PNG input: {path}") from error
 
 
 def otsu_threshold(gray: np.ndarray) -> int:
