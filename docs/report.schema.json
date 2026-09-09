@@ -18,7 +18,7 @@
   "properties": {
     "schema_version": { "const": 1 },
     "overall_score": { "type": "number", "minimum": 0, "maximum": 1 },
-    "config": { "type": "object" },
+    "config": { "$ref": "#/$defs/config" },
     "reference": { "$ref": "#/$defs/page" },
     "candidate": { "$ref": "#/$defs/page" },
     "alignment": {
@@ -39,19 +39,27 @@
       },
       "additionalProperties": false
     },
-    "structural": { "type": "object" },
-    "components": { "type": "object" },
-    "raster_secondary": { "type": "object" },
+    "structural": { "$ref": "#/$defs/structural" },
+    "components": { "$ref": "#/$defs/components" },
+    "raster_secondary": { "$ref": "#/$defs/raster" },
     "artifacts": {
       "type": "object",
       "required": ["aligned_reference", "aligned_candidate", "overlay", "diff"],
-      "additionalProperties": { "type": "string" }
+      "properties": {
+        "aligned_reference": { "const": "aligned-reference.png" },
+        "aligned_candidate": { "const": "aligned-candidate.png" },
+        "overlay": { "const": "overlay.png" },
+        "diff": { "const": "diff.png" }
+      },
+      "additionalProperties": false
     }
   },
   "additionalProperties": false,
   "$defs": {
     "affine": {
       "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
       "prefixItems": [
         { "type": "number" },
         { "type": "number" },
@@ -61,6 +69,124 @@
         { "type": "number" }
       ],
       "items": false
+    },
+    "point": {
+      "type": "object",
+      "required": ["x", "y"],
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" }
+      },
+      "additionalProperties": false
+    },
+    "rect": {
+      "type": "object",
+      "required": ["x", "y", "width", "height"],
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "width": { "type": "number", "minimum": 0 },
+        "height": { "type": "number", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "config": {
+      "type": "object",
+      "required": [
+        "max_abs_skew_degrees",
+        "skew_step_degrees",
+        "skew_sample_limit",
+        "min_staff_line_page_width_ratio",
+        "staff_gap_relative_tolerance",
+        "system_break_gap_sp",
+        "staff_removal_min_run_sp",
+        "min_component_area_sp2",
+        "component_match_max_distance_sp",
+        "component_match_max_size_log_ratio"
+      ],
+      "properties": {
+        "max_abs_skew_degrees": { "type": "number", "minimum": 0 },
+        "skew_step_degrees": { "type": "number", "exclusiveMinimum": 0 },
+        "skew_sample_limit": { "type": "integer", "minimum": 1 },
+        "min_staff_line_page_width_ratio": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 1
+        },
+        "staff_gap_relative_tolerance": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "system_break_gap_sp": { "type": "number", "minimum": 0 },
+        "staff_removal_min_run_sp": { "type": "number", "minimum": 0 },
+        "min_component_area_sp2": { "type": "number", "minimum": 0 },
+        "component_match_max_distance_sp": { "type": "number", "minimum": 0 },
+        "component_match_max_size_log_ratio": { "type": "number", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "source": {
+      "type": "object",
+      "required": ["role", "format", "path", "width_px", "height_px"],
+      "properties": {
+        "role": { "enum": ["reference", "candidate"] },
+        "format": { "const": "png" },
+        "path": { "type": "string", "minLength": 1 },
+        "width_px": { "type": "integer", "minimum": 1 },
+        "height_px": { "type": "integer", "minimum": 1 }
+      },
+      "additionalProperties": false
+    },
+    "staff": {
+      "type": "object",
+      "required": ["id", "bounds_sp", "line_y_sp", "confidence"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "bounds_sp": { "$ref": "#/$defs/rect" },
+        "line_y_sp": {
+          "type": "array",
+          "minItems": 5,
+          "maxItems": 5,
+          "prefixItems": [
+            { "type": "number" },
+            { "type": "number" },
+            { "type": "number" },
+            { "type": "number" },
+            { "type": "number" }
+          ],
+          "items": false
+        },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+      },
+      "additionalProperties": false
+    },
+    "system": {
+      "type": "object",
+      "required": ["id", "bounds_sp", "staff_ids"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "bounds_sp": { "$ref": "#/$defs/rect" },
+        "staff_ids": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      },
+      "additionalProperties": false
+    },
+    "object": {
+      "type": "object",
+      "required": ["id", "kind", "semantic_id", "bounds_sp", "centroid_sp", "area_sp2"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "kind": { "type": "string", "minLength": 1 },
+        "semantic_id": { "type": ["string", "null"] },
+        "bounds_sp": { "$ref": "#/$defs/rect" },
+        "centroid_sp": { "$ref": "#/$defs/point" },
+        "area_sp2": { "type": "number", "minimum": 0 }
+      },
+      "additionalProperties": false
     },
     "page": {
       "type": "object",
@@ -74,13 +200,104 @@
         "objects"
       ],
       "properties": {
-        "source": { "type": "object" },
+        "source": { "$ref": "#/$defs/source" },
         "staff_space_px": { "type": "number", "exclusiveMinimum": 0 },
         "estimated_skew_degrees": { "type": "number" },
         "binarization_threshold": { "type": "integer", "minimum": 0, "maximum": 255 },
-        "staves": { "type": "array", "minItems": 1 },
-        "systems": { "type": "array", "minItems": 1 },
-        "objects": { "type": "array" }
+        "staves": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/staff" }
+        },
+        "systems": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/system" }
+        },
+        "objects": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/object" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "structural": {
+      "type": "object",
+      "required": [
+        "reference_staff_count",
+        "candidate_staff_count",
+        "reference_system_count",
+        "candidate_system_count",
+        "staff_count_matches",
+        "system_count_matches"
+      ],
+      "properties": {
+        "reference_staff_count": { "type": "integer", "minimum": 1 },
+        "candidate_staff_count": { "type": "integer", "minimum": 1 },
+        "reference_system_count": { "type": "integer", "minimum": 1 },
+        "candidate_system_count": { "type": "integer", "minimum": 1 },
+        "staff_count_matches": { "type": "boolean" },
+        "system_count_matches": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "match": {
+      "type": "object",
+      "required": [
+        "reference_id",
+        "candidate_id",
+        "centroid_delta_sp",
+        "centroid_distance_sp",
+        "width_delta_sp",
+        "height_delta_sp",
+        "cost"
+      ],
+      "properties": {
+        "reference_id": { "type": "string", "minLength": 1 },
+        "candidate_id": { "type": "string", "minLength": 1 },
+        "centroid_delta_sp": { "$ref": "#/$defs/point" },
+        "centroid_distance_sp": { "type": "number", "minimum": 0 },
+        "width_delta_sp": { "type": "number" },
+        "height_delta_sp": { "type": "number" },
+        "cost": { "type": "number", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "components": {
+      "type": "object",
+      "required": [
+        "candidate_edge_count",
+        "matches",
+        "unmatched_reference_ids",
+        "unmatched_candidate_ids",
+        "match_ratio",
+        "mean_centroid_distance_sp"
+      ],
+      "properties": {
+        "candidate_edge_count": { "type": "integer", "minimum": 0 },
+        "matches": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/match" }
+        },
+        "unmatched_reference_ids": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "unmatched_candidate_ids": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "match_ratio": { "type": "number", "minimum": 0, "maximum": 1 },
+        "mean_centroid_distance_sp": { "type": ["number", "null"], "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "raster": {
+      "type": "object",
+      "required": ["mean_absolute_luma_error", "foreground_disagreement_ratio"],
+      "properties": {
+        "mean_absolute_luma_error": { "type": "number", "minimum": 0, "maximum": 1 },
+        "foreground_disagreement_ratio": { "type": "number", "minimum": 0, "maximum": 1 }
       },
       "additionalProperties": false
     }
