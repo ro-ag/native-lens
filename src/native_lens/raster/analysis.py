@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from math import cos, radians, sin
 from pathlib import Path
 
 import numpy as np
@@ -10,7 +11,7 @@ from PIL import Image
 from scipy import ndimage
 
 from native_lens.config import AnalysisConfig
-from native_lens.geometry import Point, Rect
+from native_lens.geometry import AffineTransform, Point, Rect
 from native_lens.model import ExtractedObject, PageAnalysis, StaffRegion, SystemRegion
 
 
@@ -26,13 +27,21 @@ class RasterAnalysis:
     staff_rows_px: tuple[tuple[float, ...], ...]
     staff_bounds_px: tuple[tuple[int, int], ...]
     anchor_px: Point
+    source_to_deskew_px: AffineTransform
 
 
 def load_gray(path: Path) -> np.ndarray:
-    with Image.open(path) as image:
-        if image.format != "PNG":
-            raise AnalysisError(f"expected PNG input: {path}")
-        return np.asarray(image.convert("L"), dtype=np.uint8)
+    if not path.is_file():
+        raise AnalysisError(f"input is not a file: {path}")
+    try:
+        with Image.open(path) as image:
+            if image.format != "PNG":
+                raise AnalysisError(f"expected PNG input: {path}")
+            return np.asarray(image.convert("L"), dtype=np.uint8)
+    except AnalysisError:
+        raise
+    except (OSError, ValueError) as error:
+        raise AnalysisError(f"cannot decode PNG input: {path}") from error
 
 
 def otsu_threshold(gray: np.ndarray) -> int:
@@ -154,6 +163,25 @@ def _remove_staff(
     return result
 
 
+def _rotation_transform(
+    source_shape: tuple[int, int], output_shape: tuple[int, int], angle_degrees: float
+) -> AffineTransform:
+    """Map source pixel centers to scipy's reshaped, rotated image coordinates."""
+    angle = radians(angle_degrees)
+    cosine = cos(angle)
+    sine = sin(angle)
+    source_center = Point((source_shape[1] - 1) / 2, (source_shape[0] - 1) / 2)
+    output_center = Point((output_shape[1] - 1) / 2, (output_shape[0] - 1) / 2)
+    return AffineTransform(
+        a=cosine,
+        b=-sine,
+        c=sine,
+        d=cosine,
+        e=output_center.x - cosine * source_center.x - sine * source_center.y,
+        f=output_center.y + sine * source_center.x - cosine * source_center.y,
+    )
+
+
 def analyze_png(path: Path, role: str, config: AnalysisConfig) -> RasterAnalysis:
     source_gray = load_gray(path)
     source_threshold = otsu_threshold(source_gray)
@@ -163,6 +191,7 @@ def analyze_png(path: Path, role: str, config: AnalysisConfig) -> RasterAnalysis
     # correction angle expected by scipy's counter-clockwise rotation.
     gray = ndimage.rotate(source_gray, skew, reshape=True, order=1, mode="constant", cval=255)
     gray = np.clip(np.rint(gray), 0, 255).astype(np.uint8)
+    source_to_deskew = _rotation_transform(source_gray.shape, gray.shape, skew)
     threshold = otsu_threshold(gray)
     ink = gray <= threshold
     rows = detect_staff_rows(ink, config)
@@ -253,7 +282,7 @@ def analyze_png(path: Path, role: str, config: AnalysisConfig) -> RasterAnalysis
         tuple(systems),
         tuple(objects),
     )
-    return RasterAnalysis(page, gray, ink, rows, extents, anchor)
+    return RasterAnalysis(page, gray, ink, rows, extents, anchor, source_to_deskew)
 
 
 def _system(index: int, staves: list[StaffRegion]) -> SystemRegion:

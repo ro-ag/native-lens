@@ -53,6 +53,17 @@ class AffineTransform:
             self.b * point.x + self.d * point.y + self.f,
         )
 
+    def then(self, following: AffineTransform) -> AffineTransform:
+        """Return the transform that applies this transform, then ``following``."""
+        return AffineTransform(
+            a=following.a * self.a + following.c * self.b,
+            b=following.b * self.a + following.d * self.b,
+            c=following.a * self.c + following.c * self.d,
+            d=following.b * self.c + following.d * self.d,
+            e=following.a * self.e + following.c * self.f + following.e,
+            f=following.b * self.e + following.d * self.f + following.f,
+        )
+
 
 @dataclass(frozen=True, slots=True)
 class CubicBezier:

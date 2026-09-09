@@ -45,18 +45,23 @@ def main() -> int:
         make_page(page, arguments.width, arguments.height)
         durations = []
         object_count = 0
+        candidate_edge_count = 0
         for run in range(arguments.repeat):
             started = perf_counter()
             report = compare_pngs(page, page, root / f"report-{run}")
             durations.append(perf_counter() - started)
             object_count = len(report["reference"]["objects"])
+            candidate_edge_count = report["components"]["candidate_edge_count"]
     print(
         json.dumps(
             {
+                "candidate_edges": candidate_edge_count,
                 "height_px": arguments.height,
                 "max_seconds": round(max(durations), 6),
+                "mean_seconds": round(sum(durations) / len(durations), 6),
                 "min_seconds": round(min(durations), 6),
                 "objects": object_count,
+                "page_pixels": arguments.width * arguments.height,
                 "repeat": arguments.repeat,
                 "width_px": arguments.width,
             },

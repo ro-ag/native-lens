@@ -74,6 +74,11 @@ Run the synthetic end-to-end performance baseline with:
 uv run python benchmarks/benchmark_pipeline.py
 ```
 
+The JSON result records page dimensions and pixels, extracted component count,
+local match-candidate edge count, repeats, and min/mean/max elapsed seconds.
+Timing is intentionally benchmark output rather than part of deterministic
+comparison reports.
+
 Synthetic score pages are generated in tests, making fixtures reproducible and
 keeping their geometry explicit. See [CONTRIBUTING.md](CONTRIBUTING.md).
 

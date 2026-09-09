@@ -113,6 +113,10 @@ Deskew both pages independently. Uniformly scale the candidate so its median
 staff space equals the reference, then translate its first staff-line origin to
 the reference origin. Place both images on a union canvas, preserving all
 content. This deliberately avoids elastic or measure-local registration.
+`reference_to_canvas_px` and `candidate_to_canvas_px` are six-value affine
+transforms in `[a, b, c, d, e, f]` order. They map original source pixel centers
+directly to aligned artifact coordinates by composing the center-based deskew
+rotation and reshape offset, candidate scale, and union-canvas translation.
 
 ### Components and comparison
 
@@ -122,6 +126,24 @@ express bounds and centroids relative to the first staff origin. Candidate
 matches are gated by centroid distance and size ratio; sorted cost edges are
 consumed greedily with stable ID tie-breaks. The report includes deltas, costs,
 and both unmatched sets so ambiguity remains diagnosable.
+
+The raster stages make a constant number of page passes. Component extraction
+examines each component's bounding slice rather than rescanning the full page
+for every label. Matching uses a staff-space radius index, then sorts only the
+reported local candidate edges. The resulting work is proportional to page
+pixels, the sum of component bounding-slice areas, and local match edges; the
+benchmark reports all three observable proxies (pixels, objects, and edges).
+
+### Milestone 1 performance baseline
+
+Run `uv run python benchmarks/benchmark_pipeline.py` for the full synthetic
+baseline. On an Apple-silicon macOS host with Python 3.13, three comparisons of
+a 1600 x 2200 page containing 1,782 extracted components and 4,774 local
+candidate edges completed in 0.414-0.422 seconds each. A half-width,
+half-height 800 x 1100 page containing 780 components and 2,100 edges completed
+in 0.130-0.153 seconds. Timings are diagnostics, not a portable pass/fail
+threshold; benchmark JSON reports the work counts so future changes can be
+compared at equivalent work.
 
 ### Secondary raster metrics
 
@@ -159,4 +181,3 @@ lockfile, command, and build activity runs through `uv`.
    consensus/outlier analysis.
 5. Add broad/narrow collision phases, clearance policies, curve metrics, and
    failure-crop/HTML reporting.
-
