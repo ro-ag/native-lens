@@ -47,6 +47,7 @@ def test_comparison_writes_stable_report_and_artifacts(tmp_path: Path) -> None:
     assert report["schema_version"] == 1
     assert report["structural"]["staff_count_matches"] is True
     assert report["components"]["matches"]
+    assert report["components"]["candidate_edge_count"] >= len(report["components"]["matches"])
     assert report["reference"]["staves"][0]["bounds_sp"]["x"] == 0
     assert set(report["artifacts"].values()) == {
         "aligned-reference.png",

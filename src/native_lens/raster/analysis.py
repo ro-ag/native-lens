@@ -201,8 +201,12 @@ def analyze_png(path: Path, role: str, config: AnalysisConfig) -> RasterAnalysis
     without_staff = _remove_staff(ink, rows, spacing, config)
     labels, count = ndimage.label(without_staff, structure=np.ones((3, 3), dtype=np.uint8))
     objects: list[ExtractedObject] = []
-    for label_id in range(1, count + 1):
-        y, x = np.nonzero(labels == label_id)
+    for label_id, slices in enumerate(ndimage.find_objects(labels, max_label=count), 1):
+        if slices is None:
+            continue
+        local_y, local_x = np.nonzero(labels[slices] == label_id)
+        y = local_y + slices[0].start
+        x = local_x + slices[1].start
         area = len(x) / spacing**2
         if area < config.min_component_area_sp2:
             continue

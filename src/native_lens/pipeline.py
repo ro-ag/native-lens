@@ -10,6 +10,7 @@ from typing import Any
 
 import numpy as np
 from PIL import Image
+from scipy.spatial import cKDTree
 
 from native_lens.config import AnalysisConfig
 from native_lens.model import REPORT_SCHEMA_VERSION, ObjectMatch, Point, report_dict
@@ -20,8 +21,22 @@ def _matches(
     reference: RasterAnalysis, candidate: RasterAnalysis, config: AnalysisConfig
 ) -> dict[str, Any]:
     edges: list[tuple[float, int, int]] = []
+    candidate_points = np.array(
+        [(item.centroid_sp.x, item.centroid_sp.y) for item in candidate.page.objects],
+        dtype=np.float64,
+    )
+    candidate_tree = cKDTree(candidate_points) if len(candidate_points) else None
     for left_index, left in enumerate(reference.page.objects):
-        for right_index, right in enumerate(candidate.page.objects):
+        nearby = (
+            candidate_tree.query_ball_point(
+                (left.centroid_sp.x, left.centroid_sp.y),
+                config.component_match_max_distance_sp,
+            )
+            if candidate_tree is not None
+            else []
+        )
+        for right_index in sorted(nearby):
+            right = candidate.page.objects[right_index]
             distance = left.centroid_sp.distance(right.centroid_sp)
             size_ratio = abs(log(max(left.area_sp2, 1e-9) / max(right.area_sp2, 1e-9)))
             if (
@@ -55,6 +70,7 @@ def _matches(
         )
     denominator = max(len(reference.page.objects), len(candidate.page.objects), 1)
     return {
+        "candidate_edge_count": len(edges),
         "matches": [report_dict(item) for item in matched],
         "unmatched_reference_ids": [
             item.id for index, item in enumerate(reference.page.objects) if index not in used_left
