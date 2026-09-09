@@ -159,7 +159,9 @@ def analyze_png(path: Path, role: str, config: AnalysisConfig) -> RasterAnalysis
     source_threshold = otsu_threshold(source_gray)
     source_ink = source_gray <= source_threshold
     skew = estimate_skew(source_ink, config)
-    gray = ndimage.rotate(source_gray, -skew, reshape=True, order=1, mode="constant", cval=255)
+    # The projection transform uses image coordinates, so `skew` is already the
+    # correction angle expected by scipy's counter-clockwise rotation.
+    gray = ndimage.rotate(source_gray, skew, reshape=True, order=1, mode="constant", cval=255)
     gray = np.clip(np.rint(gray), 0, 255).astype(np.uint8)
     threshold = otsu_threshold(gray)
     ink = gray <= threshold

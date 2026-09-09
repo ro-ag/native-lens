@@ -68,6 +68,12 @@ uv run pytest --cov
 uv build
 ```
 
+Run the synthetic end-to-end performance baseline with:
+
+```console
+uv run python benchmarks/benchmark_pipeline.py
+```
+
 Synthetic score pages are generated in tests, making fixtures reproducible and
 keeping their geometry explicit. See [CONTRIBUTING.md](CONTRIBUTING.md).
 

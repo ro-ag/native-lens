@@ -1,4 +1,6 @@
 import json
+import subprocess
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -136,3 +138,53 @@ def test_horizontal_margin_is_removed_by_structural_registration(tmp_path: Path)
     reference_transform = report["alignment"]["reference_to_canvas_px"]
     assert candidate_transform[4] - reference_transform[4] == -20
     assert report["raster_secondary"]["foreground_disagreement_ratio"] < 0.01
+
+
+def test_scale_is_normalized_from_staff_space(tmp_path: Path) -> None:
+    reference = tmp_path / "reference.png"
+    candidate = tmp_path / "candidate.png"
+    score_page(reference)
+    with Image.open(reference) as image:
+        image.resize((525, 225), Image.Resampling.NEAREST).save(candidate)
+
+    report = compare_pngs(reference, candidate, tmp_path / "report")
+
+    assert report["alignment"]["candidate_scale"] == pytest.approx(0.8, abs=0.02)
+    assert report["components"]["match_ratio"] > 0.8
+
+
+def test_small_skew_is_detected_and_removed(tmp_path: Path) -> None:
+    reference = tmp_path / "reference.png"
+    candidate = tmp_path / "candidate.png"
+    score_page(reference)
+    with Image.open(reference) as image:
+        image.rotate(0.8, resample=Image.Resampling.BICUBIC, expand=True, fillcolor=255).save(
+            candidate
+        )
+
+    report = compare_pngs(reference, candidate, tmp_path / "report")
+
+    assert abs(report["candidate"]["estimated_skew_degrees"]) == pytest.approx(0.8, abs=0.11)
+    assert report["structural"]["staff_count_matches"] is True
+
+
+def test_executable_benchmark_smoke() -> None:
+    root = Path(__file__).parents[1]
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(root / "benchmarks" / "benchmark_pipeline.py"),
+            "--width",
+            "600",
+            "--height",
+            "500",
+            "--repeat",
+            "1",
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    metrics = json.loads(result.stdout)
+    assert metrics["objects"] > 0
+    assert metrics["max_seconds"] > 0

@@ -8,17 +8,17 @@ is complete only when it has executable evidence.
 | Accept two PNG inputs | CLI and end-to-end test | Complete |
 | Detect five-line staves | Synthetic two-staff test | Complete |
 | Estimate staff-space size | Structural report assertions | Complete |
-| Detect and remove small global skew | Rotated synthetic regression | Open |
-| Normalize scale without local warping | Scaled synthetic regression | Open |
+| Detect and remove small global skew | Rotated synthetic regression | Complete |
+| Normalize scale without local warping | Scaled synthetic regression | Complete |
 | Detect staff and system regions including x-extents | Region assertions | Complete |
 | Align on both axes using a union canvas | Translation regression and transform assertions | Complete |
 | Calculate secondary raster metrics | End-to-end report test | Complete |
 | Extract components without full-page work per component | Bounding-slice extraction and spatial match index | Complete |
 | Compare normalized component geometry | Offset component regression | Complete |
-| Produce versioned JSON conforming to a published schema | Schema contract test | Open |
+| Produce versioned JSON conforming to a published schema | Schema contract test | Complete |
 | Produce four diagnostic PNG artifacts | End-to-end artifact test | Complete |
-| Fail deterministically without partial output | CLI/pipeline failure tests | Open |
-| Include executable benchmark | `uv run python benchmarks/benchmark_pipeline.py` | Open |
+| Fail deterministically without partial output | CLI/pipeline failure tests | Complete |
+| Include executable benchmark | `uv run python benchmarks/benchmark_pipeline.py` | Complete |
 
 ## Audit findings
 
