@@ -84,6 +84,24 @@ def test_absolute_path_moveto_lineto_curveto_closepath() -> None:
     )
 
 
+def test_closepath_at_coincident_point_appends_no_segment() -> None:
+    document = parsed('<path d="M 0 0 L 5 5 L 0 0 Z"/>')
+    assert document.shapes[0].subpaths == (
+        (
+            LineSegment(Point(0, 0), Point(5, 5)),
+            LineSegment(Point(5, 5), Point(0, 0)),
+        ),
+    )
+
+
+def test_command_after_closepath_starts_new_subpath() -> None:
+    document = parsed('<path d="M 0 0 L 5 5 Z L 5 5"/>')
+    assert document.shapes[0].subpaths == (
+        (LineSegment(Point(0, 0), Point(5, 5)), LineSegment(Point(5, 5), Point(0, 0))),
+        (LineSegment(Point(0, 0), Point(5, 5)),),
+    )
+
+
 def test_relative_commands_repeat_implicitly() -> None:
     document = parsed('<path d="m 10 10 20 0 0 20 l -20 0 z"/>')
     assert document.shapes[0].subpaths == (
@@ -202,6 +220,15 @@ def test_full_circle_from_two_arcs() -> None:
     endpoints = [segment.end for segment in subpath] + [subpath[0].start]
     for endpoint in endpoints:
         assert Point(0, 0).distance(endpoint) == pytest.approx(1)
+
+
+def test_nonpositive_circle_or_ellipse_radius_is_rejected() -> None:
+    with pytest.raises(SvgError, match="radius"):
+        parsed('<circle cx="0" cy="0" r="0"/>')
+    with pytest.raises(SvgError, match="radius"):
+        parsed('<circle cx="0" cy="0" r="-1"/>')
+    with pytest.raises(SvgError, match="radii"):
+        parsed('<ellipse cx="0" cy="0" rx="0" ry="5"/>')
 
 
 def test_translate_then_scale_flattens_points() -> None:
