@@ -5,13 +5,14 @@ from typing import Any
 
 import pytest
 
+import native_lens
 from native_lens import compare_pngs
 from tests.test_pipeline import score_page
 
 
 def _resolve_ref(root: dict[str, Any], reference: str) -> dict[str, Any]:
     assert reference.startswith("#/")
-    resolved: Any = root
+    resolved = root
     for part in reference[2:].split("/"):
         resolved = resolved[part]
     return resolved
@@ -110,6 +111,6 @@ def test_serialized_report_recursively_conforms_to_published_schema(tmp_path: Pa
 
 def test_published_and_installed_schema_copies_are_identical() -> None:
     published = Path(__file__).parents[1] / "docs" / "report.schema.json"
-    installed = Path(__import__("native_lens").__file__).with_name("report.schema.json")
+    installed = Path(native_lens.__file__).with_name("report.schema.json")
 
     assert installed.read_bytes() == published.read_bytes()

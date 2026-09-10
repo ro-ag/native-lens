@@ -4,15 +4,22 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from math import cos, radians, sin
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
 from PIL import Image
 from scipy import ndimage
 
-from native_lens.config import AnalysisConfig
 from native_lens.geometry import AffineTransform, Point, Rect
 from native_lens.model import ExtractedObject, PageAnalysis, StaffRegion, SystemRegion
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from native_lens.config import AnalysisConfig
+
+MIN_STAFF_LINE_GAP_PX = 2  # smallest row gap, in pixels, that five staff lines may have
+MIN_STAFF_LINE_SUPPORT = 3  # staff-line count that anchors a common horizontal extent
 
 
 class AnalysisError(ValueError):
@@ -21,6 +28,8 @@ class AnalysisError(ValueError):
 
 @dataclass(frozen=True, slots=True)
 class RasterAnalysis:
+    """One page's structural analysis paired with its deskewed raster arrays."""
+
     page: PageAnalysis
     gray: np.ndarray
     ink: np.ndarray
@@ -31,6 +40,7 @@ class RasterAnalysis:
 
 
 def load_gray(path: Path) -> np.ndarray:
+    """Load a PNG file as an 8-bit grayscale array."""
     if not path.is_file():
         raise AnalysisError(f"input is not a file: {path}")
     try:
@@ -45,6 +55,7 @@ def load_gray(path: Path) -> np.ndarray:
 
 
 def otsu_threshold(gray: np.ndarray) -> int:
+    """Return Otsu's binarization threshold for a grayscale image."""
     histogram = np.bincount(gray.ravel(), minlength=256).astype(np.float64)
     count = gray.size
     total = np.dot(np.arange(256), histogram)
@@ -70,6 +81,7 @@ def otsu_threshold(gray: np.ndarray) -> int:
 
 
 def estimate_skew(ink: np.ndarray, config: AnalysisConfig) -> float:
+    """Return the staff skew angle in degrees estimated by row projection."""
     y, x = np.nonzero(ink)
     if not len(x):
         return 0.0
@@ -101,6 +113,7 @@ def _runs(indices: np.ndarray) -> list[np.ndarray]:
 
 
 def detect_staff_rows(ink: np.ndarray, config: AnalysisConfig) -> tuple[tuple[float, ...], ...]:
+    """Return the y coordinates of each detected five-line staff."""
     projection = ink.sum(axis=1)
     cutoff = max(
         ink.shape[1] * config.min_staff_line_page_width_ratio,
@@ -117,7 +130,7 @@ def detect_staff_rows(ink: np.ndarray, config: AnalysisConfig) -> tuple[tuple[fl
         gaps = np.diff(rows)
         spacing = float(np.median(gaps))
         if (
-            spacing >= 2
+            spacing >= MIN_STAFF_LINE_GAP_PX
             and np.max(np.abs(gaps - spacing)) <= spacing * config.staff_gap_relative_tolerance
         ):
             groups.append(rows)
@@ -141,7 +154,7 @@ def detect_staff_extents(
             row = round(value)
             band = ink[max(0, row - 1) : min(ink.shape[0], row + 2)]
             support += band.any(axis=0)
-        continuous = ndimage.binary_closing(support >= 3, structure=gap_fill)
+        continuous = ndimage.binary_closing(support >= MIN_STAFF_LINE_SUPPORT, structure=gap_fill)
         candidates = _runs(np.flatnonzero(continuous))
         if not candidates:
             raise AnalysisError("staff lines have no common horizontal extent")
@@ -183,6 +196,7 @@ def _rotation_transform(
 
 
 def analyze_png(path: Path, role: str, config: AnalysisConfig) -> RasterAnalysis:
+    """Analyze a PNG score page into deskewed raster and structural results."""
     source_gray = load_gray(path)
     source_threshold = otsu_threshold(source_gray)
     source_ink = source_gray <= source_threshold
@@ -208,25 +222,32 @@ def analyze_png(path: Path, role: str, config: AnalysisConfig) -> RasterAnalysis
             (extent[1] - extent[0]) / spacing,
             4.0,
         )
+        line_y: tuple[float, float, float, float, float] = (
+            (staff[0] - anchor.y) / spacing,
+            (staff[1] - anchor.y) / spacing,
+            (staff[2] - anchor.y) / spacing,
+            (staff[3] - anchor.y) / spacing,
+            (staff[4] - anchor.y) / spacing,
+        )
         staves.append(
             StaffRegion(
                 f"staff-{index}",
                 bounds,
-                tuple((row - anchor.y) / spacing for row in staff),
+                line_y,
                 1.0 - float(np.std(np.diff(staff)) / spacing),
             )
         )
 
     systems: list[SystemRegion] = []
     current: list[StaffRegion] = []
-    for staff in staves:
+    for region in staves:
         if (
             current
-            and staff.bounds_sp.y - current[-1].bounds_sp.bottom > config.system_break_gap_sp
+            and region.bounds_sp.y - current[-1].bounds_sp.bottom > config.system_break_gap_sp
         ):
             systems.append(_system(len(systems) + 1, current))
             current = []
-        current.append(staff)
+        current.append(region)
     systems.append(_system(len(systems) + 1, current))
 
     without_staff = _remove_staff(ink, rows, spacing, config)

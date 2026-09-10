@@ -5,6 +5,8 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True, slots=True)
 class AnalysisConfig:
+    """Tunable thresholds that control the analysis pipeline."""
+
     max_abs_skew_degrees: float = 2.0
     skew_step_degrees: float = 0.1
     skew_sample_limit: int = 250_000

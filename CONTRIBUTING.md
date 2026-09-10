@@ -10,6 +10,7 @@ Run before submitting a change:
 uv sync
 uv run ruff check .
 uv run ruff format --check .
+uv run mypy .
 uv run pytest --cov
 uv build
 ```

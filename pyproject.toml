@@ -3,7 +3,7 @@ name = "native-lens"
 version = "0.1.0"
 description = "Deterministic notation-aware analysis of rendered music"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.13"
 license = "MIT"
 authors = [{ name = "native-lens contributors" }]
 keywords = ["music-notation", "engraving", "computer-vision", "regression-testing"]
@@ -12,7 +12,7 @@ classifiers = [
     "Environment :: Console",
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Multimedia :: Graphics",
     "Topic :: Software Development :: Testing",
 ]
@@ -33,6 +33,7 @@ engravecmp = "native_lens.cli:main"
 
 [dependency-groups]
 dev = [
+    "mypy>=1.14",
     "pytest>=8.3",
     "pytest-cov>=6.0",
     "ruff>=0.12",
@@ -59,7 +60,51 @@ show_missing = true
 
 [tool.ruff]
 line-length = 100
-target-version = "py312"
+target-version = "py313"
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "N", "UP", "B", "SIM", "RUF"]
+# Maximum enforcement: every stable rule family, minus formatter conflicts,
+# docstyle variants superseded by D211/D213, and deliberate Any at the report
+# serialization boundary.
+select = ["ALL"]
+ignore = [
+    "COM812", # conflicts with ruff format trailing-comma behavior
+    "ISC001", # conflicts with ruff format multiline-string handling
+    "D203",   # one-blank-line-before-class; superseded by D211
+    "D212",   # summary-on-first-line; superseded by D213
+    "ANN401", # Any is deliberate in report_dict and its call sites
+    "CPY001", # the MIT LICENSE file carries the copyright notice
+    "EM101",  # raising with literal messages is this repo's error style
+    "EM102",  # raising with f-string messages is this repo's error style
+    "TRY003", # exception messages live at the raise site by repo convention
+    "TRY301", # abstracting raises into helpers hurts readability here
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = [
+    "D100",    # test module names carry the specification
+    "D103",    # test names carry the specification
+    "S101",    # assertions are the point of tests
+    "PLR0913", # table-test helper signatures take one argument per case field
+    "PLR2004", # literal expectations are the point of tests
+]
+"tests/test_report_schema.py" = [
+    "C901",    # the recursive JSON-Schema validator helper is complex by nature
+    "PLR0911", # one branch per JSON-Schema keyword
+    "PLR0912", # one branch per JSON-Schema keyword
+]
+"benchmarks/**" = [
+    "D103",  # benchmark script
+    "INP001", # benchmark is a script, not a package
+    "T201",  # benchmark prints its own results
+]
+"src/native_lens/cli.py" = ["T201"] # the CLI prints its report path and score
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+
+[[tool.mypy.overrides]]
+# scipy publishes no type stubs for the small API surface used here.
+module = "scipy.*"
+ignore_missing_imports = true

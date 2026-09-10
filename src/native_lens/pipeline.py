@@ -5,8 +5,7 @@ from __future__ import annotations
 import json
 from dataclasses import asdict
 from math import log
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from PIL import Image
@@ -21,6 +20,9 @@ from native_lens.model import (
     report_dict,
 )
 from native_lens.raster.analysis import RasterAnalysis, analyze_png
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def _matches(
