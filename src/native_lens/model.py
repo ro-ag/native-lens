@@ -3,15 +3,20 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from native_lens.geometry import AffineTransform, Point, Rect
+
+if TYPE_CHECKING:
+    from _typeshed import DataclassInstance
 
 REPORT_SCHEMA_VERSION = 1
 
 
 @dataclass(frozen=True, slots=True)
 class StaffRegion:
+    """A detected five-line staff measured in staff-space units."""
+
     id: str
     bounds_sp: Rect
     line_y_sp: tuple[float, float, float, float, float]
@@ -20,6 +25,8 @@ class StaffRegion:
 
 @dataclass(frozen=True, slots=True)
 class SystemRegion:
+    """A group of staves joined into a single system."""
+
     id: str
     bounds_sp: Rect
     staff_ids: tuple[str, ...]
@@ -27,6 +34,8 @@ class SystemRegion:
 
 @dataclass(frozen=True, slots=True)
 class ExtractedObject:
+    """A non-staff connected component measured in staff-space units."""
+
     id: str
     kind: str
     semantic_id: str | None
@@ -37,6 +46,8 @@ class ExtractedObject:
 
 @dataclass(frozen=True, slots=True)
 class PageAnalysis:
+    """The complete structural analysis of one rendered page."""
+
     source: dict[str, Any]
     staff_space_px: float
     estimated_skew_degrees: float
@@ -48,6 +59,8 @@ class PageAnalysis:
 
 @dataclass(frozen=True, slots=True)
 class ObjectMatch:
+    """A correspondence between one reference and one candidate component."""
+
     reference_id: str
     candidate_id: str
     centroid_delta_sp: Point
@@ -57,7 +70,7 @@ class ObjectMatch:
     cost: float
 
 
-def report_dict(value: object) -> dict[str, Any]:
+def report_dict(value: DataclassInstance) -> dict[str, Any]:
     """Convert a report dataclass tree and round floating output."""
 
     def clean(item: Any) -> Any:
@@ -69,7 +82,8 @@ def report_dict(value: object) -> dict[str, Any]:
             return [clean(child) for child in item]
         return item
 
-    return clean(asdict(value))
+    result: dict[str, Any] = clean(asdict(value))
+    return result
 
 
 __all__ = [

@@ -32,7 +32,7 @@ pixel similarity.
 
 ## Install and run
 
-The project requires Python 3.12 or newer and uses `uv` for dependency,
+The project requires Python 3.13 or newer and uses `uv` for dependency,
 environment, lockfile, run, and build workflows.
 
 ```console
@@ -64,6 +64,7 @@ The source tree is organized by responsibility:
 uv sync
 uv run ruff check .
 uv run ruff format --check .
+uv run mypy .
 uv run pytest --cov
 uv build
 ```

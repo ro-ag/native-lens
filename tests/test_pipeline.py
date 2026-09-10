@@ -345,7 +345,7 @@ def test_small_skew_is_detected_and_removed(tmp_path: Path, angle: float) -> Non
 
 def test_executable_benchmark_smoke() -> None:
     root = Path(__file__).parents[1]
-    result = subprocess.run(
+    result = subprocess.run(  # noqa: S603 - fixed arguments to this repo's own benchmark script
         [
             sys.executable,
             str(root / "benchmarks" / "benchmark_pipeline.py"),

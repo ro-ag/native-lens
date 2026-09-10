@@ -1,5 +1,6 @@
 /.ptrack/
 .venv/
+.superpowers/
 __pycache__/
 *.py[cod]
 *.egg-info/
@@ -9,3 +10,5 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 .DS_Store
+/.mimosa/
+/.video_agent/

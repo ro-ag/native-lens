@@ -10,6 +10,7 @@ from native_lens.raster.analysis import AnalysisError
 
 
 def parser() -> argparse.ArgumentParser:
+    """Build the ``engravecmp`` argument parser."""
     root = argparse.ArgumentParser(prog="engravecmp", description=__doc__)
     commands = root.add_subparsers(dest="command", required=True)
     compare = commands.add_parser("compare", help="compare two PNG score renderings")
@@ -20,6 +21,7 @@ def parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Run one comparison and return the process exit code."""
     arguments = parser().parse_args(argv)
     try:
         report = compare_pngs(arguments.reference, arguments.candidate, arguments.output)

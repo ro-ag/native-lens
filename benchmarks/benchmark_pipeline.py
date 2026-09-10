@@ -12,6 +12,8 @@ from PIL import Image, ImageDraw
 
 from native_lens import compare_pngs
 
+MIN_DIMENSION_PX = 200
+
 
 def make_page(path: Path, width: int, height: int) -> None:
     image = Image.new("L", (width, height), 255)
@@ -36,8 +38,14 @@ def main() -> int:
     parser.add_argument("--height", type=int, default=2200)
     parser.add_argument("--repeat", type=int, default=3)
     arguments = parser.parse_args()
-    if arguments.width < 200 or arguments.height < 200 or arguments.repeat < 1:
-        parser.error("width and height must be at least 200; repeat must be positive")
+    if (
+        arguments.width < MIN_DIMENSION_PX
+        or arguments.height < MIN_DIMENSION_PX
+        or arguments.repeat < 1
+    ):
+        parser.error(
+            f"width and height must be at least {MIN_DIMENSION_PX}; repeat must be positive"
+        )
 
     with tempfile.TemporaryDirectory(prefix="native-lens-benchmark-") as directory:
         root = Path(directory)
