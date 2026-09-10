@@ -66,6 +66,18 @@ class AffineTransform:
 
 
 @dataclass(frozen=True, slots=True)
+class LineSegment:
+    start: Point
+    end: Point
+
+    def length(self) -> float:
+        return self.start.distance(self.end)
+
+    def evaluate(self, amount: float) -> Point:
+        return self.start.lerp(self.end, amount)
+
+
+@dataclass(frozen=True, slots=True)
 class CubicBezier:
     start: Point
     control_1: Point

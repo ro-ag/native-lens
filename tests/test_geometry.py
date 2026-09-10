@@ -1,4 +1,4 @@
-from native_lens.geometry import AffineTransform, CubicBezier, Point, Rect
+from native_lens.geometry import AffineTransform, CubicBezier, LineSegment, Point, Rect
 
 
 def test_geometry_primitives() -> None:
@@ -16,3 +16,11 @@ def test_bezier_preserves_endpoints() -> None:
     curve = CubicBezier(Point(0, 1), Point(1, 0), Point(2, 0), Point(3, 1))
     assert curve.evaluate(0) == curve.start
     assert curve.evaluate(1) == curve.end
+
+
+def test_line_segment_length_and_evaluation() -> None:
+    segment = LineSegment(Point(1, 2), Point(4, 6))
+    assert segment.length() == 5
+    assert segment.evaluate(0) == segment.start
+    assert segment.evaluate(1) == segment.end
+    assert segment.evaluate(0.5) == Point(2.5, 4)
