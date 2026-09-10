@@ -43,7 +43,9 @@ def main() -> int:
         or arguments.height < MIN_DIMENSION_PX
         or arguments.repeat < 1
     ):
-        parser.error("width and height must be at least 200; repeat must be positive")
+        parser.error(
+            f"width and height must be at least {MIN_DIMENSION_PX}; repeat must be positive"
+        )
 
     with tempfile.TemporaryDirectory(prefix="native-lens-benchmark-") as directory:
         root = Path(directory)
